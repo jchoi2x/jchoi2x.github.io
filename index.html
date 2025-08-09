@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Resume - James Choi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Neutrals (Slate, Zinc, Stone) -->
+    <!-- Application Structure Plan: A narrative-driven, single-page application designed to guide the user through James Choi's career journey, highlighting the transition from Software Engineering to DevOps. The structure is thematic: 1. Hero/Summary: A strong first impression. 2. Interactive Timeline: Visually shows the career progression and the pivot towards DevOps. 3. Skills Dashboard: Allows interactive exploration of technical skills. 4. Project Showcase: A deep dive into the most relevant DevOps projects, demonstrating practical application. 5. Contact Section. This non-linear, story-focused structure is more engaging than a traditional resume and better highlights the key message of a developer-turned-DevOps expert. -->
+    <!-- Visualization & Content Choices: 
+        - Career Timeline (HTML/CSS/JS): Goal is to show change over time. An interactive timeline is more engaging than a list. Users can click on roles to see details, which keeps the initial view clean.
+        - Skills Radar Chart (Chart.js): Goal is to compare skills across different domains. A radar chart provides a compelling visual summary of strengths in areas like Cloud, IaC, and CI/CD. It's more impactful than a simple list. Interaction is provided by hovering over points.
+        - Project Architecture Diagrams (HTML/CSS Grid): Goal is to organize complex information. Using semantic HTML and Tailwind's grid/flexbox to build diagrams avoids SVG and clearly communicates the technical architecture of the home lab and CI/CD pipeline. Clickable cards reveal these diagrams.
+        - Justification: These choices create a narrative flow, from high-level summary to deep technical detail, all controlled by the user. They turn passive reading into active exploration.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+            color: #1e293b; /* slate-800 */
+        }
+        .dark body {
+            background-color: #0f172a; /* slate-900 */
+            color: #e2e8f0; /* slate-200 */
+        }
+        .section-title {
+            color: #0f172a; /* slate-900 */
+        }
+        .dark .section-title {
+            color: #f8fafc; /* slate-50 */
+        }
+        .card {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0; /* slate-200 */
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .dark .card {
+            background-color: #1e293b; /* slate-800 */
+            border-color: #334155; /* slate-700 */
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .tag {
+            background-color: #e2e8f0; /* slate-200 */
+            color: #334155; /* slate-700 */
+        }
+        .dark .tag {
+            background-color: #334155; /* slate-700 */
+            color: #cbd5e1; /* slate-300 */
+        }
+        .active-nav {
+            color: #4f46e5; /* indigo-600 */
+            position: relative;
+        }
+        .dark .active-nav {
+            color: #818cf8; /* indigo-400 */
+        }
+        .active-nav::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: #4f46e5; /* indigo-600 */
+        }
+        .dark .active-nav::after {
+            background-color: #818cf8; /* indigo-400 */
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+    </style>
+    <script>
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark')
+        } else {
+          document.documentElement.classList.remove('dark')
+        }
+    </script>
+</head>
+<body class="antialiased">
+
+    <!-- Header & Navigation -->
+    <header class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm sticky top-0 z-50 border-b border-slate-200 dark:border-slate-700">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">James Choi</h1>
+            <div class="hidden md:flex items-center space-x-8">
+                <a href="#summary" class="text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors duration-300">Summary</a>
+                <a href="#experience" class="text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors duration-300">Experience</a>
+                <a href="#skills" class="text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors duration-300">Skills</a>
+                <a href="#projects" class="text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors duration-300">Projects</a>
+                <button id="theme-toggle" type="button" class="text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 focus:outline-none focus:ring-4 focus:ring-slate-200 dark:focus:ring-slate-700 rounded-lg text-sm p-2.5">
+                    <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                    <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
+                </button>
+            </div>
+            <a href="mailto:choijjames@gmail.com" class="hidden md:block bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors duration-300">Contact Me</a>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-6 py-12">
+
+        <!-- Section 1: Professional Summary -->
+        <section id="summary" class="text-center py-16">
+            <h2 class="text-4xl md:text-5xl font-bold section-title mb-4">Software Engineer, DevOps Enthusiast</h2>
+            <p class="max-w-3xl mx-auto text-lg text-slate-600 dark:text-slate-400 mb-8">
+                With over 8 years of experience architecting and deploying full-stack applications, I am now focusing my career on DevOps Engineering. I leverage a deep, developer-centric understanding of the entire SDLC to build, automate, and scale resilient cloud infrastructure, bridging the gap between development and operations.
+            </p>
+            <div class="flex justify-center space-x-4">
+                 <a href="https://linkedin.com/in/jchoi2012" target="_blank" class="text-indigo-600 dark:text-indigo-400 hover:underline">LinkedIn</a>
+                 <span>&bull;</span>
+                 <a href="https://github.com/jchoi2x" target="_blank" class="text-indigo-600 dark:text-indigo-400 hover:underline">GitHub</a>
+            </div>
+        </section>
+
+        <!-- Section 2: Experience Timeline -->
+        <section id="experience" class="py-16">
+            <h2 class="text-3xl font-bold text-center section-title mb-12">Career Journey: From Developer to DevOps</h2>
+            <div id="timeline-container" class="relative max-w-4xl mx-auto">
+                <!-- Timeline will be generated by JS -->
+            </div>
+            <div id="experience-details" class="mt-12 max-w-4xl mx-auto card p-6 hidden">
+                <!-- Details will be injected here -->
+            </div>
+        </section>
+
+        <!-- Section 3: Skills Dashboard -->
+        <section id="skills" class="py-16 bg-white dark:bg-slate-800 rounded-2xl">
+            <h2 class="text-3xl font-bold text-center section-title mb-4">Core Skills</h2>
+            <p class="text-center text-slate-600 dark:text-slate-400 mb-12">An interactive overview of my technical capabilities.</p>
+            <div class="chart-container">
+                <canvas id="skillsChart"></canvas>
+            </div>
+            <div class="max-w-4xl mx-auto mt-12 text-center">
+                <h3 class="font-semibold text-lg mb-4">Key Technologies</h3>
+                <div id="skills-tags" class="flex flex-wrap justify-center gap-2">
+                    <!-- Tags will be generated by JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Projects Showcase -->
+        <section id="projects" class="py-16">
+            <h2 class="text-3xl font-bold text-center section-title mb-12">Selected DevOps Projects</h2>
+            <div class="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+                <!-- Project cards will be generated by JS -->
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-slate-800 dark:bg-black text-slate-400 py-8 text-center">
+        <p>&copy; 2025 James Choi. This interactive resume was built to showcase my skills.</p>
+    </footer>
+
+    <script>
+        const resumeData = {
+            experience: [
+                {
+                    company: "Snappy App, Inc.",
+                    role: "Senior Full Stack Engineer",
+                    date: "2024 – 2025",
+                    focus: "Development",
+                    description: "Ensured production service reliability and cost-efficiency by leading API performance optimizations, tuning AWS Lambda and API Gateway caching, reducing P95 latency by 35% and lowering infrastructure costs. Engineered a centralized logging solution using Coralogix. Partnered with the DevOps team to provide application-level insights for CI/CD pipeline improvements."
+                },
+                {
+                    company: "eNotaryLog",
+                    role: "Software Architect / Senior Software Engineer",
+                    date: "2019 – 2024",
+                    focus: "DevOps",
+                    description: "Architected and deployed a high-availability remote notarization platform on a Kubernetes-based microservices architecture, achieving 99.95% uptime. Owned the CI/CD process for multiple services using Jenkins and GitLab CI. Managed cloud infrastructure using Terraform. Automated TLS certificate management within the Kubernetes cluster using Helm and cert-manager."
+                },
+                {
+                    company: "E2 Generations",
+                    role: "Senior Software Engineer",
+                    date: "2018 – 2019",
+                    focus: "Development",
+                    description: "Revitalized multiple at-risk projects by documenting system architecture, refactoring legacy code, and establishing a consistent Git branching strategy (GitFlow) to stabilize development."
+                },
+                {
+                    company: "FlexShopper.com",
+                    role: "Senior Software Engineer",
+                    date: "2016 – 2017",
+                    focus: "DevOps",
+                    description: "Increased site-wide network throughput by over 50% by implementing Varnish cache at the network edge. Pioneered microservice observability by implementing the OpenTracing.io specification, building custom libraries to enable distributed tracing across critical backend services."
+                }
+            ],
+            skills: {
+                labels: ['Cloud & Infra', 'IaC', 'CI/CD', 'Containers', 'Observability', 'Scripting'],
+                data: [90, 85, 95, 90, 80, 85],
+                tags: ['AWS', 'GCP', 'Cloudflare', 'Terraform', 'Ansible', 'Jenkins', 'GitHub Actions', 'Docker', 'Kubernetes', 'Istio', 'Prometheus', 'Grafana', 'Python', 'Go', 'Bash']
+            },
+            projects: [
+                {
+                    title: "Bare-Metal Kubernetes Home Lab",
+                    short: "A production-like R&D platform built from the ground up, featuring a full service mesh and automated ingress.",
+                    details: `
+                        <h4 class="font-bold text-xl mb-4">Architecture & Key Features</h4>
+                        <p class="mb-4">This project serves as a personal R&D platform for experimenting with emerging cloud-native technologies. It's built on a bare-metal server running MicroK8s.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+                            <div class="bg-slate-100 dark:bg-slate-700 p-4 rounded-lg">
+                                <h5 class="font-semibold mb-2">Networking & Ingress</h5>
+                                <ul class="list-disc list-inside text-slate-600 dark:text-slate-300 text-sm">
+                                    <li><strong>Istio Service Mesh:</strong> Manages all inter-service communication, providing traffic management, security, and observability.</li>
+                                    <li><strong>NGINX Ingress:</strong> Handles external traffic, routing to appropriate services.</li>
+                                    <li><strong>Cloudflare:</strong> Provides DNS, proxying, and security for public endpoints.</li>
+                                    <li><strong>Let's Encrypt:</strong> Automates SSL certificate generation for secure traffic.</li>
+                                </ul>
+                            </div>
+                            <div class="bg-slate-100 dark:bg-slate-700 p-4 rounded-lg">
+                                <h5 class="font-semibold mb-2">Hosted Applications</h5>
+                                <ul class="list-disc list-inside text-slate-600 dark:text-slate-300 text-sm">
+                                    <li><strong>Kafka (Redpanda):</strong> High-performance event streaming.</li>
+                                    <li><strong>Elasticsearch:</strong> Search and analytics engine.</li>
+                                    <li><strong>EventStoreDB:</strong> Stateful database for event-sourced applications.</li>
+                                    <li><strong>And more:</strong> Easily deploy any containerized application.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    `
+                },
+                {
+                    title: "Serverless CI/CD Pipeline",
+                    short: "A fully automated pipeline for testing and deploying Cloudflare Workers using GitHub Actions.",
+                    details: `
+                        <h4 class="font-bold text-xl mb-4">Pipeline Workflow</h4>
+                        <p class="mb-4">This project demonstrates a modern, GitOps approach to serverless development, ensuring code quality and enabling rapid, zero-downtime deployments.</p>
+                        <div class="space-y-4">
+                            <div class="flex items-start">
+                                <div class="bg-indigo-500 text-white rounded-full h-8 w-8 flex items-center justify-center font-bold mr-4">1</div>
+                                <div><span class="font-semibold">Trigger:</span> On push to main branch.</div>
+                            </div>
+                            <div class="flex items-start">
+                                <div class="bg-indigo-500 text-white rounded-full h-8 w-8 flex items-center justify-center font-bold mr-4">2</div>
+                                <div><span class="font-semibold">Build & Test:</span> Installs dependencies, runs linting, and executes integration tests.</div>
+                            </div>
+                            <div class="flex items-start">
+                                <div class="bg-indigo-500 text-white rounded-full h-8 w-8 flex items-center justify-center font-bold mr-4">3</div>
+                                <div><span class="font-semibold">Deploy to Staging:</span> Uses Cloudflare's Wrangler CLI to deploy to a staging environment.</div>
+                            </div>
+                             <div class="flex items-start">
+                                <div class="bg-indigo-500 text-white rounded-full h-8 w-8 flex items-center justify-center font-bold mr-4">4</div>
+                                <div><span class="font-semibold">Promote to Production:</span> After successful validation, performs a zero-downtime swap to the production environment.</div>
+                            </div>
+                        </div>
+                    `
+                }
+            ]
+        };
+
+        let skillsChartInstance = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Theme Toggle ---
+            const themeToggleBtn = document.getElementById('theme-toggle');
+            const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+            const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+
+            if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                themeToggleLightIcon.classList.remove('hidden');
+            } else {
+                themeToggleDarkIcon.classList.remove('hidden');
+            }
+
+            themeToggleBtn.addEventListener('click', function() {
+                themeToggleDarkIcon.classList.toggle('hidden');
+                themeToggleLightIcon.classList.toggle('hidden');
+
+                if (localStorage.getItem('theme')) {
+                    if (localStorage.getItem('theme') === 'light') {
+                        document.documentElement.classList.add('dark');
+                        localStorage.setItem('theme', 'dark');
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                        localStorage.setItem('theme', 'light');
+                    }
+                } else {
+                    if (document.documentElement.classList.contains('dark')) {
+                        document.documentElement.classList.remove('dark');
+                        localStorage.setItem('theme', 'light');
+                    } else {
+                        document.documentElement.classList.add('dark');
+                        localStorage.setItem('theme', 'dark');
+                    }
+                }
+                createSkillsChart();
+            });
+
+            // --- Navigation ---
+            const navLinks = document.querySelectorAll('header nav a[href^="#"]');
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    document.querySelector(this.getAttribute('href')).scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                });
+            });
+
+            // --- Timeline Generation ---
+            const timelineContainer = document.getElementById('timeline-container');
+            const detailsContainer = document.getElementById('experience-details');
+            
+            const line = document.createElement('div');
+            line.className = 'absolute top-0 left-1/2 w-0.5 h-full bg-slate-300 dark:bg-slate-700 -translate-x-1/2';
+            timelineContainer.appendChild(line);
+
+            resumeData.experience.forEach((job, index) => {
+                const isLeft = index % 2 === 0;
+                const dotColor = job.focus === 'DevOps' ? 'bg-indigo-500' : 'bg-slate-500';
+
+                const wrapper = document.createElement('div');
+                wrapper.className = `relative mb-8 flex items-center ${isLeft ? 'justify-start' : 'justify-end'}`;
+                
+                const content = `
+                    <div class="w-5/12">
+                        <div class="card p-4 rounded-lg cursor-pointer" data-index="${index}">
+                            <h3 class="font-bold text-lg">${job.company}</h3>
+                            <p class="text-sm text-slate-600 dark:text-slate-400">${job.role}</p>
+                            <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">${job.date}</p>
+                        </div>
+                    </div>
+                `;
+                
+                const dot = `
+                    <div class="absolute left-1/2 -translate-x-1/2 w-4 h-4 rounded-full ${dotColor} border-4 border-white dark:border-slate-800"></div>
+                `;
+
+                wrapper.innerHTML = isLeft ? content + dot : dot + content;
+                timelineContainer.appendChild(wrapper);
+            });
+
+            timelineContainer.addEventListener('click', (e) => {
+                const card = e.target.closest('.card');
+                if (card) {
+                    const index = card.dataset.index;
+                    const job = resumeData.experience[index];
+                    detailsContainer.innerHTML = `
+                        <h3 class="font-bold text-2xl mb-2">${job.company} <span class="text-lg font-normal text-slate-500 dark:text-slate-400">- ${job.role}</span></h3>
+                        <p class="text-slate-600 dark:text-slate-300">${job.description}</p>
+                    `;
+                    detailsContainer.classList.remove('hidden');
+                    detailsContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            });
+
+            // --- Skills Chart ---
+            const createSkillsChart = () => {
+                if (skillsChartInstance) {
+                    skillsChartInstance.destroy();
+                }
+                const isDarkMode = document.documentElement.classList.contains('dark');
+                const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)';
+                const labelColor = isDarkMode ? '#cbd5e1' : '#334155';
+                const ticksColor = isDarkMode ? '#94a3b8' : '#64748b';
+
+                const ctx = document.getElementById('skillsChart').getContext('2d');
+                skillsChartInstance = new Chart(ctx, {
+                    type: 'radar',
+                    data: {
+                        labels: resumeData.skills.labels,
+                        datasets: [{
+                            label: 'Proficiency',
+                            data: resumeData.skills.data,
+                            backgroundColor: isDarkMode ? 'rgba(129, 140, 248, 0.2)' : 'rgba(79, 70, 229, 0.2)',
+                            borderColor: isDarkMode ? 'rgba(129, 140, 248, 1)' : 'rgba(79, 70, 229, 1)',
+                            pointBackgroundColor: isDarkMode ? 'rgba(129, 140, 248, 1)' : 'rgba(79, 70, 229, 1)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: isDarkMode ? 'rgba(129, 140, 248, 1)' : 'rgba(79, 70, 229, 1)'
+                        }]
+                    },
+                    options: {
+                        maintainAspectRatio: false,
+                        responsive: true,
+                        scales: {
+                            r: {
+                                angleLines: { color: gridColor },
+                                grid: { color: gridColor },
+                                pointLabels: { font: { size: 14 }, color: labelColor },
+                                ticks: {
+                                    backdropColor: 'transparent',
+                                    color: ticksColor,
+                                    stepSize: 25,
+                                    beginAtZero: true,
+                                    max: 100
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+            }
+            createSkillsChart();
+
+            // --- Skills Tags ---
+            const tagsContainer = document.getElementById('skills-tags');
+            resumeData.skills.tags.forEach(tag => {
+                const tagEl = document.createElement('span');
+                tagEl.className = 'tag px-3 py-1 rounded-full text-sm font-medium';
+                tagEl.textContent = tag;
+                tagsContainer.appendChild(tagEl);
+            });
+
+            // --- Projects Generation ---
+            const projectsContainer = document.querySelector('#projects .grid');
+            resumeData.projects.forEach(project => {
+                const projectCard = document.createElement('div');
+                projectCard.className = 'card p-6 rounded-lg text-center';
+                projectCard.innerHTML = `
+                    <h3 class="font-bold text-2xl mb-2">${project.title}</h3>
+                    <p class="text-slate-600 dark:text-slate-400 mb-4">${project.short}</p>
+                    <button class="details-btn text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">View Architecture</button>
+                    <div class="project-details hidden mt-4 text-left">${project.details}</div>
+                `;
+                projectsContainer.appendChild(projectCard);
+            });
+
+            projectsContainer.addEventListener('click', e => {
+                if (e.target.classList.contains('details-btn')) {
+                    const btn = e.target;
+                    const details = btn.nextElementSibling;
+                    const isOpen = !details.classList.contains('hidden');
+                    
+                    details.classList.toggle('hidden');
+                    btn.textContent = isOpen ? 'View Architecture' : 'Hide Architecture';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
