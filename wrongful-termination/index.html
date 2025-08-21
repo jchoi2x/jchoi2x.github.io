@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>James v. Snappy — Interactive Timeline (JSX, CDN)</title>
+  <!-- TailwindCSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React & ReactDOM (UMD) -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Babel Standalone to run JSX in the browser -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Framer Motion UMD -->
+  <script src="https://unpkg.com/framer-motion/dist/framer-motion.umd.js"></script>
+  <style>
+    html, body { height: 100%; }
+  </style>
+</head>
+<body class="min-h-screen bg-zinc-950 text-zinc-100">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useMemo, useState, useEffect, useRef } = React;
+    const { motion, AnimatePresence } = window.framerMotion;
+
+    // ---- Data -------------------------------------------------------------
+    const RAW_EVENTS = [
+      {
+        id: "2025-04-22-health-disclosure",
+        date: "Apr 22, 2025",
+        sortKey: "2025-04-22",
+        title: "Disclosing Health Issues",
+        summary:
+          "Disclosed ongoing heart/blood pressure problems and related work impact to HR/manager.",
+        tags: ["ADA", "HR", "Health"],
+        evidence: ["04.22.2025 disclosing.png"],
+      },
+      {
+        id: "2025-spring-positive-review",
+        date: "Spring 2025",
+        sortKey: "2025-03-20",
+        title: "Positive Performance Review",
+        summary: "Received positive feedback in company system.",
+        tags: ["Performance"],
+        evidence: ["PerformanceReviewReceived.png"],
+      },
+      {
+        id: "2025-spring-humiliation",
+        date: "Spring 2025",
+        sortKey: "2025-04-01",
+        title: "Manager Humiliation in Meeting",
+        summary:
+          "Publicly humiliated by manager in front of colleagues during a Zoom meeting.",
+        tags: ["Hostile Conduct", "Retaliation"],
+        evidence: ["humiliation1.png", "humiliation2.png", "humilation3.png"],
+      },
+      {
+        id: "2025-spring-validation",
+        date: "Spring 2025",
+        sortKey: "2025-04-02",
+        title: "Colleague Validates Mistreatment",
+        summary:
+          "Coworker confirms in writing — ‘no one deserves that’ — regarding manager’s conduct.",
+        tags: ["Corroboration"],
+        evidence: ["dontdeservethat.png"],
+      },
+      {
+        id: "2025-spring-gatekeeping",
+        date: "Spring 2025",
+        sortKey: "2025-04-05",
+        title: "Manager Gatekeeping / Team Issues",
+        summary:
+          "Evidence of being excluded, nitpicked, or gatekept by team.",
+        tags: ["Retaliation", "Hostile Conduct"],
+        evidence: ["gatekeeping.png"],
+      },
+      {
+        id: "2025-spring-hr-exchange",
+        date: "Spring 2025",
+        sortKey: "2025-04-06",
+        title: "HR Exchange About Support",
+        summary: "Evidence of reaching out to HR for support.",
+        tags: ["HR", "Process"],
+        evidence: ["exchange with hr.png"],
+      },
+      {
+        id: "2025-spring-summer-pip",
+        date: "Spring/Summer 2025",
+        sortKey: "2025-06-01",
+        title: "PIP Given After Medical Disclosure",
+        summary:
+          "Placed on PIP shortly after health disclosure; not given clear improvement plan.",
+        tags: ["Retaliation", "ADA", "Performance"],
+        evidence: ["given pip.png"],
+      },
+      {
+        id: "2025-07-mid-covid-notice",
+        date: "Mid-July 2025",
+        sortKey: "2025-07-15",
+        title: "Notifying Manager of COVID",
+        summary:
+          "Sent manager lab results/COVID notification; received vague or noncommittal response.",
+        tags: ["Health", "HR", "Policy"],
+        evidence: [
+          "Notifying Manager I have covid 1.png",
+          "Notifying Manager I have covid 2.png",
+        ],
+      },
+      {
+        id: "2025-07-forced-15hr",
+        date: "Jul 2025",
+        sortKey: "2025-07-21",
+        title: "Forced to Work 15+ Hours While Ill",
+        summary:
+          "Worked excessively while sick with COVID; suffered physically and emotionally as a result.",
+        tags: ["Retaliation", "Health", "Policy"],
+        evidence: [
+          "Covid Incident Day After 1.png",
+          "Covid Incident Day After 2.png",
+          "Covid Incident Day After 3.png",
+        ],
+      },
+      {
+        id: "2025-07-manager-dismisses",
+        date: "Jul 2025",
+        sortKey: "2025-07-22",
+        title: "Manager Dismisses Medical Harm/Impact",
+        summary:
+          "Manager’s Slack messages show pressure, lack of empathy, non-apology, and deflection.",
+        tags: ["Retaliation", "Hostile Conduct"],
+        evidence: [
+          "(See COVID/Slack screenshots referenced in preceding events)",
+        ],
+      },
+      {
+        id: "2025-07-er-visit",
+        date: "Jul 2025",
+        sortKey: "2025-07-23",
+        title: "ER Visit After Overwork",
+        summary:
+          "Ended up in ER following overwork while ill, feeling isolated and at risk.",
+        tags: ["Health", "Damages"],
+        evidence: ["(Medical records / Slack reference of ER visit)"]
+      },
+      {
+        id: "2025-08-05-termination-details",
+        date: "Aug 5, 2025",
+        sortKey: "2025-08-05",
+        title: "Requested Written Termination Details",
+        summary:
+          "Asked for written confirmation of employment status, final pay, and COBRA.",
+        tags: ["HR", "Separation"],
+        evidence: [
+          "Screenshot 2025-08-05 181449.png",
+          "Screenshot 2025-08-05 181429.png",
+          "Screenshot 2025-08-05 190039.png",
+        ],
+      },
+      {
+        id: "2025-08-09-access-cut",
+        date: "Aug 9, 2025",
+        sortKey: "2025-08-09",
+        title: "Cut Off From Slack & Portal",
+        summary:
+          "Access to Slack and company systems terminated without final paperwork or process.",
+        tags: ["HR", "Process", "Separation"],
+        evidence: ["Screenshot 2025-08-05 191147.png", "(additional access-loss docs)"]
+      },
+      {
+        id: "2025-ongoing-distress",
+        date: "Ongoing (2025)",
+        sortKey: "2025-08-10",
+        title: "Emotional Distress & Health Decline",
+        summary:
+          "Severe distress, panic attacks, relapse into depression, ongoing health issues from workplace conduct.",
+        tags: ["Damages", "Health"],
+        evidence: ["Medical records", "Therapy notes", "Slack health references"],
+      },
+    ];
+
+    // Color map for tags
+    const TAG_STYLES = {
+      ADA: "bg-blue-100 text-blue-700 ring-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:ring-blue-700/50",
+      HR: "bg-amber-100 text-amber-800 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-700/50",
+      Health: "bg-rose-100 text-rose-700 ring-rose-200 dark:bg-rose-900/30 dark:text-rose-200 dark:ring-rose-700/50",
+      Performance: "bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:ring-emerald-700/50",
+      "Hostile Conduct": "bg-fuchsia-100 text-fuchsia-700 ring-fuchsia-200 dark:bg-fuchsia-900/30 dark:text-fuchsia-200 dark:ring-fuchsia-700/50",
+      Retaliation: "bg-red-100 text-red-700 ring-red-200 dark:bg-red-900/30 dark:text-red-200 dark:ring-red-700/50",
+      Policy: "bg-cyan-100 text-cyan-700 ring-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-200 dark:ring-cyan-700/50",
+      Process: "bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-900/30 dark:text-slate-200 dark:ring-slate-700/50",
+      Corroboration: "bg-indigo-100 text-indigo-700 ring-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-200 dark:ring-indigo-700/50",
+      Separation: "bg-zinc-100 text-zinc-700 ring-zinc-200 dark:bg-zinc-900/30 dark:text-zinc-200 dark:ring-zinc-700/50",
+      Damages: "bg-orange-100 text-orange-700 ring-orange-200 dark:bg-orange-900/30 dark:text-orange-200 dark:ring-orange-700/50",
+    };
+
+    // ---- Helpers ----------------------------------------------------------
+    const uniq = (arr) => Array.from(new Set(arr));
+
+    function useDarkMode() {
+      const [enabled, setEnabled] = useState(() => {
+        try {
+          return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        } catch {
+          return false;
+        }
+      });
+      useEffect(() => {
+        const root = document.documentElement;
+        if (enabled) root.classList.add('dark');
+        else root.classList.remove('dark');
+      }, [enabled]);
+      return [enabled, setEnabled];
+    }
+
+    function downloadJSON(filename, data) {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function EvidenceLinks({ files }) {
+      if (!files?.length) return null;
+      return (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {files.map((f, i) => (
+            <span
+              key={i}
+              title={f}
+              className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-700 shadow-sm hover:bg-white dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M16 5v2H5v11h11v-7h2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h11Zm3.707-.707 1.414 1.414-9.192 9.192-3.536.707.707-3.536 9.192-9.192Z"/></svg>
+              {f}
+            </span>
+          ))}
+        </div>
+      );
+    }
+
+    function CopyBtn({ text }) {
+      const [copied, setCopied] = useState(false);
+      return (
+        <button
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(text);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1200);
+            } catch {}
+          }}
+          className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1 text-xs shadow hover:bg-zinc-50 active:scale-95 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+        >
+          {copied ? "Copied ✓" : "Copy Summary"}
+        </button>
+      );
+    }
+
+    function QuickNote({ defaultText }) {
+      const [val, setVal] = useState(defaultText ?? "");
+      const [saved, setSaved] = useState(false);
+      const [notes, setNotes] = useState([]);
+      return (
+        <div className="flex-1">
+          <div className="flex gap-2">
+            <input
+              value={val}
+              onChange={(e) => setVal(e.target.value)}
+              placeholder="Add a quick note (local only)…"
+              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs shadow-inner focus:outline-none focus:ring-2 focus:ring-amber-400 dark:border-zinc-700 dark:bg-zinc-800"
+            />
+            <button
+              onClick={() => {
+                if (!val.trim()) return;
+                setNotes((n) => [val.trim(), ...n]);
+                setVal("");
+                setSaved(true);
+                setTimeout(() => setSaved(false), 1000);
+              }}
+              className="shrink-0 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 shadow hover:bg-amber-100 active:scale-95 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-200"
+            >
+              {saved ? "Saved ✓" : "Add"}
+            </button>
+          </div>
+          {notes.length > 0 && (
+            <ul className="mt-2 space-y-1 text-xs text-zinc-600 dark:text-zinc-300">
+              {notes.map((n, i) => (
+                <li key={i} className="rounded-md border border-zinc-200 bg-white/70 p-2 shadow-sm dark:border-zinc-700 dark:bg-zinc-800/70">
+                  {n}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      );
+    }
+
+    function Timeline({ events, compact }) {
+      const [openId, setOpenId] = useState(null);
+      return (
+        <div className="relative">
+          <div className="absolute left-5 top-0 bottom-0 w-px bg-gradient-to-b from-fuchsia-300 via-zinc-300 to-amber-300 dark:from-fuchsia-800 dark:via-zinc-700 dark:to-amber-800" />
+          <ul className="space-y-4">
+            {events.map((e) => {
+              const opened = openId === e.id;
+              return (
+                <li key={e.id} className="relative pl-12">
+                  <button
+                    onClick={() => setOpenId(opened ? null : e.id)}
+                    className="absolute left-0 top-3 grid h-10 w-10 place-items-center rounded-2xl bg-white shadow ring-2 ring-fuchsia-300 transition hover:scale-105 dark:bg-zinc-900 dark:ring-fuchsia-800"
+                    title="Expand / collapse"
+                  >
+                    <motion.div
+                      layout
+                      className="h-3 w-3 rounded-full bg-gradient-to-br from-fuchsia-500 to-amber-400 shadow"
+                      animate={{ scale: opened ? 1.25 : 1 }}
+                      transition={{ type: "spring", stiffness: 260, damping: 18 }}
+                    />
+                  </button>
+
+                  <motion.div
+                    layout
+                    className={`rounded-2xl border bg-white/90 p-4 shadow-sm ring-1 ring-zinc-200 backdrop-blur transition dark:bg-zinc-900/80 dark:ring-zinc-800 ${opened ? "shadow-md" : "hover:shadow"}`}
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">{e.date}</span>
+                      <h3 className="text-base font-semibold leading-tight">{e.title}</h3>
+                    </div>
+
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {e.tags.map((t) => (
+                        <span key={t} className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ring-1 ${TAG_STYLES[t] ?? "bg-zinc-100 text-zinc-700 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:ring-zinc-700"}`}>
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+
+                    {!compact && <p className="mt-2 text-sm leading-relaxed text-zinc-700 dark:text-zinc-200">{e.summary}</p>}
+
+                    <AnimatePresence initial={false}>
+                      {opened && (
+                        <motion.div
+                          key="details"
+                          initial={{ opacity: 0, y: -6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                          className="mt-2"
+                        >
+                          {compact && (
+                            <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-200">{e.summary}</p>
+                          )}
+                          <EvidenceLinks files={e.evidence} />
+                          <div className="mt-3 flex gap-2">
+                            <CopyBtn text={`${e.date} — ${e.title}: ${e.summary} [Evidence: ${e.evidence.join(", ")}]`} />
+                            <QuickNote defaultText={`Note re: ${e.title} — `} />
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                </li>
+              );
+            })}
+
+            {events.length === 0 && (
+              <li className="pl-12">
+                <div className="rounded-2xl border border-zinc-200 bg-white/90 p-6 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-400">
+                  No events match your filters. Try clearing the search or tags.
+                </div>
+              </li>
+            )}
+          </ul>
+        </div>
+      );
+    }
+
+    function App() {
+      const [dark, setDark] = useDarkMode();
+      const [q, setQ] = useState("");
+      const [activeTags, setActiveTags] = useState([]);
+      const [compact, setCompact] = useState(false);
+      const [pinNow, setPinNow] = useState(true);
+      const containerRef = useRef(null);
+
+      const allTags = useMemo(() => uniq(RAW_EVENTS.flatMap((e) => e.tags)), []);
+
+      const filtered = useMemo(() => {
+        const query = q.trim().toLowerCase();
+        return RAW_EVENTS.filter((e) => {
+          const matchesQ = !query
+            || [e.title, e.summary, e.date, e.tags.join(" "), e.evidence.join(" ")]
+              .join(" ")
+              .toLowerCase()
+              .includes(query);
+          const matchesTags = activeTags.length === 0 || activeTags.every((t) => e.tags.includes(t));
+          return matchesQ && matchesTags;
+        }).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+      }, [q, activeTags]);
+
+      useEffect(() => {
+        if (!pinNow) return;
+        const el = containerRef.current;
+        if (!el) return;
+        el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+      }, [pinNow, filtered.length]);
+
+      return (
+        <div className="min-h-screen w-full bg-gradient-to-b from-white to-zinc-100 text-zinc-900 antialiased dark:from-zinc-950 dark:to-zinc-900 dark:text-zinc-100">
+          <header className="sticky top-0 z-50 backdrop-blur supports-[backdrop-filter]:bg-white/60 bg-white/70 dark:supports-[backdrop-filter]:bg-zinc-950/60 dark:bg-zinc-950/70 border-b border-zinc-200 dark:border-zinc-800">
+            <div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-3">
+              <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-2xl bg-gradient-to-br from-fuchsia-500 to-amber-400 shadow ring-2 ring-white/50 dark:ring-zinc-900" />
+                <div>
+                  <h1 className="text-xl font-extrabold tracking-tight">James v. Snappy — Case Timeline</h1>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Interactive, filterable chronology of key employment events (2025).</p>
+                </div>
+              </motion.div>
+
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  onClick={() => setDark((d) => !d)}
+                  className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-sm shadow hover:bg-zinc-50 active:scale-95 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                  title="Toggle dark mode"
+                >
+                  {dark ? "🌞 Light" : "🌙 Dark"}
+                </button>
+                <button
+                  onClick={() => setCompact((c) => !c)}
+                  className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-sm shadow hover:bg-zinc-50 active:scale-95 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                  title="Toggle density"
+                >
+                  {compact ? "Comfort" : "Compact"}
+                </button>
+                <button
+                  onClick={() => downloadJSON("james-vs-snappy-timeline.json", RAW_EVENTS)}
+                  className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-sm shadow hover:bg-zinc-50 active:scale-95 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                  title="Export JSON"
+                >
+                  ⬇️ Export JSON
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <div className="mx-auto max-w-7xl px-4 py-4">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+              <aside className="lg:col-span-4">
+                <div className="rounded-2xl border border-zinc-200 bg-white/70 p-4 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/70">
+                  <div className="flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><path d="M10.5 3.75a6.75 6.75 0 1 0 0 13.5A6.75 6.75 0 0 0 10.5 3.75ZM2.25 10.5a8.25 8.25 0 1 1 14.59 5.28l4.69 4.69-1.06 1.06-4.7-4.7A8.25 8.25 0 0 1 2.25 10.5Zm8.25-4.5v4.5l3.75 2.25-.75 1.23L9 11.25V6h1.5Z"/></svg>
+                    <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-300">Search & Filters</h2>
+                  </div>
+
+                  <input
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    placeholder="Search titles, notes, or evidence…"
+                    className="mt-3 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-fuchsia-400 dark:border-zinc-700 dark:bg-zinc-800"
+                  />
+
+                  <div className="mt-4">
+                    <div className="mb-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">Filter by tags</div>
+                    <div className="flex flex-wrap gap-2">
+                      {allTags.map((t) => (
+                        <button
+                          key={t}
+                          onClick={() =>
+                            setActiveTags((prev) =>
+                              prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]
+                            )
+                          }
+                          className={`${TAG_STYLES[t] ?? "bg-zinc-100 text-zinc-700 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:ring-zinc-700"} rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition ${activeTags.includes(t) ? "ring-2 scale-95" : "opacity-90"}`}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                    {activeTags.length > 0 && (
+                      <button
+                        onClick={() => setActiveTags([])}
+                        className="mt-3 rounded-lg border border-zinc-200 bg-white px-2.5 py-1 text-xs shadow hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                      >
+                        Clear filters
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-between">
+                    <label className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-300">
+                      <input type="checkbox" checked={pinNow} onChange={(e)=>setPinNow(e.target.checked)} />
+                      Auto-scroll to latest
+                    </label>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-fuchsia-200 bg-fuchsia-50/70 p-4 shadow-sm dark:border-fuchsia-900/40 dark:bg-fuchsia-950/40">
+                  <h3 className="text-sm font-semibold text-fuchsia-700 dark:text-fuchsia-300">Tips</h3>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-fuchsia-900/80 dark:text-fuchsia-200/80">
+                    <li>Click a timeline node to expand details and view evidence.</li>
+                    <li>Use <strong>Dark</strong> for print-friendly screenshots.</li>
+                    <li>Export JSON to share this chronology with counsel.</li>
+                  </ul>
+                </div>
+              </aside>
+
+              <main className="lg:col-span-8">
+                <div ref={containerRef} className="h-[70vh] w-full overflow-y-auto rounded-3xl border border-zinc-200 bg-white/70 p-6 shadow-inner backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
+                  <Timeline events={filtered} compact={compact} />
+                </div>
+              </main>
+            </div>
+          </div>
+
+          <footer className="mx-auto max-w-7xl px-4 py-6 text-center text-xs text-zinc-500 dark:text-zinc-400">
+            Built for legal prep — dates reflect user-provided records. UI by ChatGPT.
+          </footer>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
